@@ -46,19 +46,40 @@ def cosine_divergence_loss(q_heads):
             loss += F.cosine_similarity(vi, vj, dim=0)
     return loss / (n * (n - 1) / 2)
 
-class DiverseGPT2(GPT2LMHeadModel):
+cclass DiverseGPT2(GPT2LMHeadModel):
     def forward(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
-        outputs = super().forward(input_ids=input_ids, attention_mask=attention_mask, labels=labels, **kwargs)
+        # Enable attention outputs
+        outputs = super().forward(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+            output_attentions=True,
+            **kwargs
+        )
+
         loss = outputs.loss
         logits = outputs.logits
+        all_attentions = outputs.attentions  # list of tensors, one per layer
 
-        # Extract Q projection weights from final layer
-        q_weight = self.transformer.h[-1].attn.c_attn.weight[:self.config.n_embd]
-        q_heads = q_weight.view(self.config.n_head, -1, self.config.n_embd)
-        div_loss = cosine_divergence_loss(q_heads)
+        # Get last layer attention: shape (batch, num_heads, seq_len, seq_len)
+        last_attn = all_attentions[-1]
+
+        # Average over batch and query sequence dim
+        # Result: shape (num_heads, seq_len)
+        head_outputs = last_attn.mean(dim=0).mean(dim=1)  # [num_heads, seq_len]
+
+        # Optional: normalize or flatten if needed
+        n = head_outputs.shape[0]
+        div_loss = 0.0
+        for i in range(n):
+            for j in range(i + 1, n):
+                div_loss += F.cosine_similarity(head_outputs[i], head_outputs[j], dim=0)
+
+        div_loss = div_loss / (n * (n - 1) / 2)
 
         total_loss = loss + lambda_coeff * div_loss
         return {"loss": total_loss, "logits": logits}
+
 
 # Train baseline model
 model = model.to("cuda:0")
