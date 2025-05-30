@@ -46,7 +46,7 @@ def cosine_divergence_loss(q_heads):
             loss += F.cosine_similarity(vi, vj, dim=0)
     return loss / (n * (n - 1) / 2)
 
-cclass DiverseGPT2(GPT2LMHeadModel):
+class DiverseGPT2(GPT2LMHeadModel):
     def forward(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
         # Enable attention outputs
         outputs = super().forward(
