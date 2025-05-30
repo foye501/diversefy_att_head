@@ -1,7 +1,11 @@
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments
 
 # Load model and tokenizer
-model = GPT2LMHeadModel.from_pretrained("sshleifer/tiny-gpt2")
+config = GPT2Config(
+    n_embd=256, n_layer=4, n_head=4, # for smaller/faster training
+)
+model = GPT2LMHeadModel(config)
+# model = GPT2LMHeadModel.from_pretrained("sshleifer/tiny-gpt2")
 tokenizer = GPT2Tokenizer.from_pretrained("sshleifer/tiny-gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
