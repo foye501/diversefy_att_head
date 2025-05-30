@@ -100,7 +100,8 @@ print("Training baseline model...")
 trainer_baseline.train()
 
 # Train diversity-regularized model
-diverse_model = DiverseGPT2.from_pretrained("gpt2")
+model = GPT2LMHeadModel(config)
+diverse_model = DiverseGPT2(config)
 trainer_diverse = Trainer(
     model=diverse_model,
     args=args,
