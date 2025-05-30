@@ -25,6 +25,7 @@ tokenized = dataset.map(tokenize, batched=True).remove_columns("text")
 args = TrainingArguments(
     output_dir="./output",
     per_device_train_batch_size=4,
+    max_grad_norm=1.0,
     no_cuda=False,
     num_train_epochs=2,
     logging_steps=10,
