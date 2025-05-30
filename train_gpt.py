@@ -1,4 +1,4 @@
-from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments,GPT2Config
 
 # Load model and tokenizer
 config = GPT2Config(
