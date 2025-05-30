@@ -1,8 +1,8 @@
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments
 
 # Load model and tokenizer
-model = GPT2LMHeadModel.from_pretrained("gpt2")
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("sshleifer/tiny-gpt2")
+tokenizer = GPT2Tokenizer.from_pretrained("sshleifer/tiny-gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
 # Load a small dataset (e.g., wikitext, or your own)
@@ -11,7 +11,10 @@ dataset = load_dataset("wikitext", "wikitext-2-raw-v1")["train"]
 
 # Tokenize
 def tokenize(example):
-    return tokenizer(example["text"], truncation=True, padding="max_length", max_length=128)
+    tokens = tokenizer(example["text"], truncation=True, padding="max_length", max_length=128)
+    tokens["labels"] = tokens["input_ids"].copy()
+    return tokens
+
 tokenized = dataset.map(tokenize, batched=True).remove_columns("text")
 
 # Training args
