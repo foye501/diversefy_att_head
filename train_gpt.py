@@ -21,6 +21,7 @@ tokenized = dataset.map(tokenize, batched=True).remove_columns("text")
 args = TrainingArguments(
     output_dir="./output",
     per_device_train_batch_size=4,
+    no_cuda=False,
     num_train_epochs=2,
     logging_steps=10,
     evaluation_strategy="no",
@@ -60,8 +61,11 @@ class DiverseGPT2(GPT2LMHeadModel):
         return {"loss": total_loss, "logits": logits}
 
 # Train baseline model
+model = model.to("cuda:0")
+
 trainer_baseline = Trainer(
     model=model,
+
     args=args,
     train_dataset=tokenized,
 )
