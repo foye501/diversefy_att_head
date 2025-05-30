@@ -52,6 +52,10 @@ def cosine_divergence_loss(q_heads):
     return loss / (n * (n - 1) / 2)
 
 class DiverseGPT2(GPT2LMHeadModel):
+    def __init__(self, config, lambda_coeff=0.01):
+        super().__init__(config)
+        self.lambda_coeff = lambda_coeff
+
     def forward(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
         # Enable attention outputs
         outputs = super().forward(
@@ -82,7 +86,7 @@ class DiverseGPT2(GPT2LMHeadModel):
 
         div_loss = div_loss / (n * (n - 1) / 2)
 
-        total_loss = loss + lambda_coeff * div_loss
+        total_loss = loss + self.lambda_coeff * div_loss
         return {"loss": total_loss, "logits": logits}
 
 
@@ -100,7 +104,7 @@ print("Training baseline model...")
 trainer_baseline.train()
 
 # Train diversity-regularized model
-model = GPT2LMHeadModel(config)
+model = GPT2LMHeadModel(config,lambda_coeff=0.01)
 diverse_model = DiverseGPT2(config)
 trainer_diverse = Trainer(
     model=diverse_model,
