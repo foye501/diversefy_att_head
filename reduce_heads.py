@@ -60,7 +60,7 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
 # Step 4: Load and tokenize dataset
-dataset = load_dataset("wikitext", "wikitext-2-raw-v1")["train"]
+dataset = load_dataset("wikitext", "wikitext-103")["train"]
 
 def tokenize(example):
     tokens = tokenizer(example["text"], truncation=True, padding="max_length", max_length=128)
@@ -77,8 +77,8 @@ model = ReducedHeadGPT2(config, reduced_n_head=3)
 # Step 6: Set training args
 training_args = TrainingArguments(
     output_dir="./reduced_head_gpt",
-    per_device_train_batch_size=4,
-    num_train_epochs=1,
+    per_device_train_batch_size=16,
+    num_train_epochs=4,
     logging_steps=50,
     save_strategy="no",
     report_to="none"
