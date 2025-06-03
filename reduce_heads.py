@@ -6,26 +6,33 @@ import torch
 
 # Step 1: Custom block with reduced heads in the last layer
 class CustomFinalBlock(GPT2Block):
-    def __init__(self, config):
-        # Clone config to avoid affecting other layers
+    def __init__(self, config, reduced_n_head=3):
         super().__init__(config)
-        self.new_n_head = 3
+
         head_dim = config.n_embd // config.n_head
-        new_n_embd = self.new_n_head * head_dim
+        reduced_emb_dim = reduced_n_head * head_dim
 
-        # Create a copy of config with new attention params
-        new_config = config.to_dict()
-        new_config["n_head"] = self.new_n_head
-        new_config["n_embd"] = new_n_embd
-        new_config = GPT2Config(**new_config)
+        # Projection to smaller input for this block
+        self.input_proj = nn.Linear(config.n_embd, reduced_emb_dim)
 
-        self.attn = GPT2Attention(new_config)
-        self.proj = nn.Linear(new_n_embd, config.n_embd)
+        # Replace attention module with fewer heads
+        self.attn = GPT2Attention(config)
+        self.attn.num_heads = reduced_n_head
+        self.attn.split_size = reduced_emb_dim
+
+        # Project back to original emb dim after attention
+        self.output_proj = nn.Linear(reduced_emb_dim, config.n_embd)
 
     def forward(self, hidden_states, **kwargs):
-        attn_output = self.attn(hidden_states)[0]
-        return self.proj(attn_output)
+        # Project down
+        reduced_in = self.input_proj(hidden_states)
 
+        # Replace the hidden states for attn forward
+        attn_out = self.attn(reduced_in)[0]
+
+        # Project back to original
+        projected = self.output_proj(attn_out)
+        return projected + hidden_states  # residual connection
 
 # Step 2: Define model
 class ReducedHeadGPT2(GPT2LMHeadModel):
