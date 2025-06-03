@@ -69,7 +69,7 @@ def tokenize(example):
     tokens["labels"] = tokens["input_ids"].copy()
     return tokens
 
-tokenized = dataset.map(tokenize, batched=True).remove_columns("text").select(range(1000))
+tokenized = dataset.map(tokenize, batched=True).remove_columns("text")
 
 config = GPT2Config()
 model = CustomGPT2(config)
