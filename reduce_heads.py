@@ -46,6 +46,13 @@ class CustomFinalBlock(GPT2Block):
         attn_output = self.reduced_attn_out_proj(attn_output)
 
         hidden_states = residual + attn_output  # residual connection
+
+        # --- MLP block ---
+        residual = hidden_states
+        hidden_states = self.ln_2(hidden_states)
+        feed_forward_hidden_states = self.mlp(hidden_states)
+        hidden_states = residual + feed_forward_hidden_states
+
         return (hidden_states,) + attn_outputs[1:]
 
 
@@ -77,7 +84,7 @@ model = ReducedHeadGPT2(config, reduced_n_head=3)
 # Step 6: Set training args
 training_args = TrainingArguments(
     output_dir="./reduced_head_gpt",
-    per_device_train_batch_size=16,
+    per_device_train_batch_size=32,
     num_train_epochs=4,
     logging_steps=50,
     save_strategy="no",
