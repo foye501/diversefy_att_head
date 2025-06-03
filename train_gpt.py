@@ -1,12 +1,13 @@
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments,GPT2Config
 
 # Load model and tokenizer
-config = GPT2Config(
-    n_embd=256, n_layer=4, n_head=4, # for smaller/faster training
-)
+# config = GPT2Config(
+#     n_embd=256, n_layer=4, n_head=4, # for smaller/faster training
+# )
+config = GPT2Config.from_pretrained("gpt2")
 model = GPT2LMHeadModel(config)
 # model = GPT2LMHeadModel.from_pretrained("sshleifer/tiny-gpt2")
-tokenizer = GPT2Tokenizer.from_pretrained("sshleifer/tiny-gpt2")
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
 # Load a small dataset (e.g., wikitext, or your own)
@@ -95,7 +96,6 @@ model = model.to("cuda:0")
 
 trainer_baseline = Trainer(
     model=model,
-
     args=args,
     train_dataset=tokenized,
 )
