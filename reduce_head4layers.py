@@ -15,8 +15,8 @@ class ReducedHeadAttention(GPT2Attention):
         self.split_size = self.num_heads * (config.n_embd // config.n_head)
 
         # Adjust projections
-        self.c_attn = nn.Linear(self.embed_dim, 3 * self.split_size)
-        self.c_proj = nn.Linear(self.split_size, self.embed_dim)
+        self.c_attn = nn.Linear(self.split_size, 3 * self.split_size)
+        self.c_proj = nn.Linear(self.split_size, self.split_size)
 
 class CustomBlock(GPT2Block):
     def __init__(self, config, n_head_custom):
