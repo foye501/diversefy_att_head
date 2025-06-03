@@ -1,7 +1,11 @@
+from transformers import GPT2Config, GPT2Tokenizer, GPT2LMHeadModel, Trainer, TrainingArguments
+from transformers.models.gpt2.modeling_gpt2 import GPT2Attention, GPT2Block
+from datasets import load_dataset
+import torch.nn as nn
+import torch
 import torch
 import torch.nn as nn
-from transformers import GPT2Config, GPT2LMHeadModel, GPT2Model
-from transformers.models.gpt2.modeling_gpt2 import GPT2Block, GPT2Attention
+from transformers.models.gpt2.modeling_gpt2 import GPT2Model, GPT2LMHeadModel, GPT2Config, GPT2Block, GPT2Attention
 
 class ReducedHeadAttention(GPT2Attention):
     def __init__(self, config, n_head_custom):
@@ -52,9 +56,36 @@ class CustomGPT2(GPT2LMHeadModel):
         for i, n_head in layer_custom_heads.items():
             self.transformer.h[i] = CustomBlock(config, n_head_custom=n_head)
 
-# Example usage
-if __name__ == "__main__":
-    config = GPT2Config()
-    model = CustomGPT2(config)
 
-    print(model)  # Print the structure to verify changes
+# Step 3: Load tokenizer
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+tokenizer.pad_token = tokenizer.eos_token
+
+# Step 4: Load and tokenize dataset
+dataset = load_dataset("wikitext", "wikitext-103-v1")["train"]
+
+def tokenize(example):
+    tokens = tokenizer(example["text"], truncation=True, padding="max_length", max_length=128)
+    tokens["labels"] = tokens["input_ids"].copy()
+    return tokens
+
+tokenized = dataset.map(tokenize, batched=True).remove_columns("text").select(range(1000))
+
+config = GPT2Config()
+model = CustomGPT2(config)
+
+print(model)  # Print the structure to verify changes
+
+# Step 6: Set training args
+training_args = TrainingArguments(
+    output_dir="./reduced_head_gpt",
+    per_device_train_batch_size=32,
+    num_train_epochs=4,
+    logging_steps=50,
+    save_strategy="no",
+    report_to="none"
+)
+
+# Step 7: Train
+trainer = Trainer(model=model, args=training_args, train_dataset=tokenized)
+trainer.train()
