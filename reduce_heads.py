@@ -3,42 +3,46 @@ from transformers.models.gpt2.modeling_gpt2 import GPT2Attention, GPT2Block
 from datasets import load_dataset
 import torch.nn as nn
 import torch
+import torch
+import torch.nn as nn
+from transformers.models.gpt2.modeling_gpt2 import GPT2Model, GPT2LMHeadModel, GPT2Config, GPT2Block, GPT2Attention
 
-# Step 1: Custom block with reduced heads in the last layer
+class ReducedHeadAttention(GPT2Attention):
+    def __init__(self, config, reduced_n_head):
+        # Keep head_dim the same
+        self.reduced_n_head = reduced_n_head
+        self.original_n_head = config.n_head
+        self.head_dim = config.n_embd // config.n_head
+        self.embed_dim = self.head_dim * reduced_n_head
+
+        # Create a new config copy to fool the base class
+        reduced_config = GPT2Config.from_pretrained('gpt2')
+        reduced_config.n_head = reduced_n_head
+        reduced_config.n_embd = self.embed_dim
+
+        super().__init__(reduced_config)
+
+    def forward(self, hidden_states, **kwargs):
+        return super().forward(hidden_states, **kwargs)
+
 class CustomFinalBlock(GPT2Block):
     def __init__(self, config, reduced_n_head=3):
         super().__init__(config)
-
-        head_dim = config.n_embd // config.n_head
-        reduced_emb_dim = reduced_n_head * head_dim
-
-        # Projection to smaller input for this block
-        self.input_proj = nn.Linear(config.n_embd, reduced_emb_dim)
-
-        # Replace attention module with fewer heads
-        self.attn = GPT2Attention(config)
-        self.attn.num_heads = reduced_n_head
-        self.attn.split_size = reduced_emb_dim
-
-        # Project back to original emb dim after attention
-        self.output_proj = nn.Linear(reduced_emb_dim, config.n_embd)
+        self.reduced_attn_in_proj = nn.Linear(config.n_embd, reduced_n_head * (config.n_embd // config.n_head))
+        self.attn = ReducedHeadAttention(config, reduced_n_head)
+        self.reduced_attn_out_proj = nn.Linear(reduced_n_head * (config.n_embd // config.n_head), config.n_embd)
 
     def forward(self, hidden_states, **kwargs):
-        # Project down
-        reduced_in = self.input_proj(hidden_states)
-
-        # Replace the hidden states for attn forward
-        attn_out = self.attn(reduced_in)[0]
-
-        # Project back to original
-        projected = self.output_proj(attn_out)
+        reduced_input = self.reduced_attn_in_proj(hidden_states)
+        attn_output = self.attn(reduced_input, **kwargs)[0]
+        projected = self.reduced_attn_out_proj(attn_output)
         return projected + hidden_states  # residual connection
 
-# Step 2: Define model
 class ReducedHeadGPT2(GPT2LMHeadModel):
-    def __init__(self, config):
+    def __init__(self, config, reduced_n_head=3):
         super().__init__(config)
-        self.transformer.h[-1] = CustomFinalBlock(config)
+        self.transformer.h[-1] = CustomFinalBlock(config, reduced_n_head=reduced_n_head)
+
 
 # Step 3: Load tokenizer
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
@@ -55,8 +59,9 @@ def tokenize(example):
 tokenized = dataset.map(tokenize, batched=True).remove_columns("text").select(range(1000))
 
 # Step 5: Load config and model
-config = GPT2Config()
-model = ReducedHeadGPT2(config)
+config = GPT2Config(n_layer=12, n_head=12, n_embd=768)
+model = ReducedHeadGPT2(config, reduced_n_head=3)
+
 
 # Step 6: Set training args
 training_args = TrainingArguments(
