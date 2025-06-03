@@ -32,11 +32,22 @@ class CustomFinalBlock(GPT2Block):
         self.attn = ReducedHeadAttention(config, reduced_n_head)
         self.reduced_attn_out_proj = nn.Linear(reduced_n_head * (config.n_embd // config.n_head), config.n_embd)
 
-    def forward(self, hidden_states, **kwargs):
+    def forward(self, hidden_states, layer_past=None, attention_mask=None, **kwargs):
+        residual = hidden_states
+
+        # Project input down
         reduced_input = self.reduced_attn_in_proj(hidden_states)
-        attn_output = self.attn(reduced_input, **kwargs)[0]
-        projected = self.reduced_attn_out_proj(attn_output)
-        return projected + hidden_states  # residual connection
+
+        # Run attention
+        attn_outputs = self.attn(reduced_input, layer_past=layer_past, attention_mask=attention_mask)
+        attn_output = attn_outputs[0]  # shape: [batch, seq_len, reduced_dim]
+
+        # Project back up to original dim
+        attn_output = self.reduced_attn_out_proj(attn_output)
+
+        hidden_states = residual + attn_output  # residual connection
+        return (hidden_states,) + attn_outputs[1:]
+
 
 class ReducedHeadGPT2(GPT2LMHeadModel):
     def __init__(self, config, reduced_n_head=3):
