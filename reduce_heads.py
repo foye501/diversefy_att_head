@@ -60,7 +60,7 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
 # Step 4: Load and tokenize dataset
-dataset = load_dataset("wikitext", "wikitext-103")["train"]
+dataset = load_dataset("wikitext", "wikitext-103-v1")["train"]
 
 def tokenize(example):
     tokens = tokenizer(example["text"], truncation=True, padding="max_length", max_length=128)
